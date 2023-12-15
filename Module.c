@@ -6,18 +6,67 @@
 #include<linux/kdev_t.h>
 #include<linux/fs.h>
 #include<linux/device.h>
+#include<linux/cdev.h>
 
 
 /*Creating Major & Minor number dynamically, not assigning the values below*/
-
 dev_t dog = 0;
 
-/*Making a structure class pointer for storing t he address of the class structure for creating the device file*/
-
+/*Making a structure class pointer for storing the address of the class structure for creating the device file*/
 static struct class *device_class;
 
-/*Making function to allocate the Major number dynamically*/
+/*Making the cdev structure*/
+static struct cdev JK_cdev;
 
+/*Creating file operations function prototypes*/
+static int	__init  file_init(void);
+static void	__exit file_exit(void);
+static int	JK_open(struct inode *inode, struct file *file);
+static int	JK_release(struct inode *inode, struct file *file);
+static ssize_t  JK_read(struct file *filp, char __user *buf, size_t len, loff_t * off);
+static ssize_t  JK_write(struct file *filp, const char *buf, size_t len, loff_t * off);
+
+/*Making file opersation structure, assigning the operations*/
+static struct file_operations fops =
+{
+	.owner   = THIS_MODULE,
+	.open    = JK_open,
+	.release = JK_release,
+	.read    = JK_read,
+	.write   = JK_write,
+};
+
+/*Making various functions which will be called when we perform file operations*/
+
+/*Open function, it will be called when we open the Device file*/
+static int JK_open(struct inode *inode, struct file *file)
+{
+	pr_info("Looks like the open function has been called successfully!\n");
+	return 0;
+}
+
+/*Release function, it will be called when we release/close the Device file*/
+static int JK_release(struct inode *inode, struct file *file)
+{
+	pr_info("Looks like the release function has been called successfully!");
+	return 0;
+}
+
+/*Read function, it will be called when we read the Device file*/
+static ssize_t JK_read(struct file *filp, char __user *buf, size_t len, loff_t * off)
+{
+	pr_info("Looks like the read function has been called succesfully!");
+	return 0;
+}
+
+/*Write function, it will be called when we write the Device file*/
+static ssize_t JK_write(struct file *filp, const char *buf, size_t len, loff_t * off)
+{
+	pr_info("Looks like the write function has been called succesfully!");
+	return len;
+}
+
+/*Making function to allocate the Major number dynamically*/
 static int __init file_init(void)
 {
         /*Allocating Major number dynamically*/
@@ -28,6 +77,15 @@ static int __init file_init(void)
 	}
         pr_info("MAJOR = %d MINOR = %d\n", MAJOR(dog), MINOR(dog));
         pr_info("Major & Minor number has been assigned succesfully!\n");
+
+	/*Creating the cdev structure*/
+	cdev_init(&JK_cdev, &fops);
+
+	/*Adding character device to the the system*/
+	if((cdev_add(&JK_cdev, dog, 1)) <0 ) {
+		pr_err("Cannot add device to the system\n");
+		goto r_class;
+	}
 
         /*Creating the class for Device file*/
 
@@ -59,6 +117,7 @@ static void  __exit file_exit(void)
 {
         device_destroy(device_class, dog);
         class_destroy(device_class);
+	cdev_del(&JK_cdev);
         unregister_chrdev_region(dog, 1);
         pr_info("Kernel has been succesfully removed!");
 }
